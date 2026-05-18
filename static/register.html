@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册 - 实时文档</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <p class="hero__eyebrow">Realtime Doc</p>
+            <h1 class="hero__title">注册账号</h1>
+            <p class="hero__description">创建一个用户名账号，登录后即可创建并编辑协作文档。</p>
+        </header>
+
+        <main class="workspace auth-workspace">
+            <section class="entry-card auth-card">
+                <div class="entry-card__header">
+                    <div>
+                        <h2 class="section-title">创建账号</h2>
+                        <p class="section-subtitle">用户名只支持字母、数字、下划线，密码至少 6 位</p>
+                    </div>
+                </div>
+
+                <form id="registerForm" class="entry-form">
+                    <label class="editor-label" for="usernameInput">用户名</label>
+                    <input id="usernameInput" class="doc-input" type="text" autocomplete="username">
+                    <label class="editor-label auth-label-space" for="passwordInput">密码</label>
+                    <input id="passwordInput" class="doc-input" type="password" autocomplete="new-password">
+                    <p class="form-message" id="formMessage"></p>
+                    <button class="primary-button auth-submit-button" type="submit">注册并登录</button>
+                </form>
+
+                <div class="auth-links">
+                    <a class="auth-link" id="loginLink" href="/login">已经有账号？去登录</a>
+                    <a class="auth-link" href="/">先回首页看看</a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/static/register.js"></script>
+</body>
+</html>

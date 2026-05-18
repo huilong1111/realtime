@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时文档</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <div class="hero__topbar">
+                <div>
+                    <p class="hero__eyebrow">Realtime Doc</p>
+                    <h1 class="hero__title">实时协作文档</h1>
+                </div>
+                <div class="auth-panel" id="authPanel">
+                    <p class="auth-panel__text" id="authStatusText">正在检查登录状态...</p>
+                    <div class="auth-panel__actions" id="authActions"></div>
+                </div>
+            </div>
+            <p class="hero__description">
+                输入文档号加入已有协作房间，或一键创建新文档并把链接分享给同伴
+            </p>
+        </header>
+
+        <main class="workspace">
+            <section class="entry-card">
+                <div class="entry-card__header">
+                    <div>
+                        <h2 class="section-title">进入文档</h2>
+                        <p class="section-subtitle">输入已有文档号，或新建一个专属协作房间</p>
+                    </div>
+                </div>
+
+                <form class="entry-form" id="entryForm">
+                    <label class="editor-label" for="docIdInput">文档号</label>
+                    <div class="entry-form__row">
+                        <input
+                            id="docIdInput"
+                            class="doc-input"
+                            type="text"
+                            maxlength="64"
+                            placeholder="例如：project-demo"
+                            autocomplete="off"
+                        >
+                        <button class="primary-button" type="submit">进入文档</button>
+                    </div>
+                    <p class="entry-help">允许字母、数字、下划线和短横线</p>
+                    <button class="secondary-button" id="createDocButton" type="button">新建文档</button>
+                </form>
+            </section>
+
+            <section class="room-list-card">
+                <div class="room-list-card__header">
+                    <div>
+                        <h2 class="section-title">已有房间</h2>
+                        <p class="section-subtitle">点击任意房间即可直接进入</p>
+                    </div>
+                </div>
+                <div class="room-list" id="roomList"></div>
+                <p class="room-list__state" id="roomListState">正在加载房间列表...</p>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/static/home.js"></script>
+</body>
+</html>

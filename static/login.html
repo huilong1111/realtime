@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 - 实时文档</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <p class="hero__eyebrow">Realtime Doc</p>
+            <h1 class="hero__title">登录账号</h1>
+            <p class="hero__description">登录后可以新建文档，并在房间内参与实时编辑。</p>
+        </header>
+
+        <main class="workspace auth-workspace">
+            <section class="entry-card auth-card">
+                <div class="entry-card__header">
+                    <div>
+                        <h2 class="section-title">欢迎回来</h2>
+                        <p class="section-subtitle">输入用户名和密码继续进入实时文档。</p>
+                    </div>
+                </div>
+
+                <form id="loginForm" class="entry-form">
+                    <label class="editor-label" for="usernameInput">用户名</label>
+                    <input id="usernameInput" class="doc-input" type="text" autocomplete="username">
+                    <label class="editor-label auth-label-space" for="passwordInput">密码</label>
+                    <input id="passwordInput" class="doc-input" type="password" autocomplete="current-password">
+                    <p class="form-message" id="formMessage"></p>
+                    <button class="primary-button auth-submit-button" type="submit">登录</button>
+                </form>
+
+                <div class="auth-links">
+                    <a class="auth-link" id="registerLink" href="/register">还没有账号？去注册</a>
+                    <a class="auth-link" href="/">先回首页看看</a>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/static/login.js"></script>
+</body>
+</html>
