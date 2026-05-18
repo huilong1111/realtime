@@ -39,11 +39,26 @@ body {
     margin: 0 auto 28px;
 }
 
+.hero--editor {
+    width: min(1180px, 100%);
+}
+
 .hero__topbar {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 20px;
+}
+
+.hero--editor .hero__topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: start;
+}
+
+.hero--editor .hero__description {
+    width: min(100%, 720px);
 }
 
 .hero__eyebrow {
@@ -95,6 +110,10 @@ body {
 .workspace {
     width: min(920px, 100%);
     margin: 0 auto;
+}
+
+.workspace--editor {
+    width: min(1180px, 100%);
 }
 
 .auth-workspace {
@@ -256,6 +275,12 @@ body {
     color: var(--text);
 }
 
+.ghost-button--danger {
+    border-color: rgba(186, 110, 102, 0.18);
+    background: rgba(205, 126, 118, 0.1);
+    color: #9a554d;
+}
+
 .card-action-button {
     flex-shrink: 0;
 }
@@ -264,6 +289,113 @@ body {
     display: flex;
     align-items: center;
     gap: 10px;
+}
+
+.editor-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 24px;
+    align-items: stretch;
+}
+
+.editor-main {
+    min-width: 0;
+}
+
+.editor-sidebar {
+    position: relative;
+    display: flex;
+    height: 100%;
+}
+
+.editor-sidebar__panel {
+    position: sticky;
+    top: 24px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+    width: 100%;
+    margin: 0;
+    border: 1px solid rgba(82, 65, 44, 0.1);
+    border-radius: 22px;
+    background: rgba(255, 253, 249, 0.86);
+    box-shadow: 0 14px 34px rgba(66, 48, 26, 0.05);
+    overflow: hidden;
+}
+
+.editor-sidebar__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 18px 18px 16px;
+    cursor: default;
+    list-style: none;
+}
+
+.editor-sidebar__summary::-webkit-details-marker,
+.editor-sidebar__summary::marker {
+    display: none;
+    content: "";
+}
+
+.editor-sidebar__summary-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.editor-sidebar__summary-label {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+.editor-sidebar__summary-title {
+    font-size: 1rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.editor-sidebar__content {
+    display: grid;
+    flex: 1;
+    grid-template-rows: auto minmax(0, 1fr);
+    min-height: 100%;
+    padding: 0 18px 18px;
+}
+
+.editor-sidebar__header {
+    justify-content: flex-start;
+    margin-bottom: 16px;
+}
+
+.editor-sidebar__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    width: 100%;
+    gap: 12px;
+    margin-left: 0;
+}
+
+.editor-sidebar__meta {
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(82, 65, 44, 0.08);
+}
+
+.editor-sidebar__permission {
+    display: flex;
+    height: 100%;
+    margin-bottom: 0;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
 }
 
 .editor-card__header {
@@ -644,6 +776,11 @@ body {
         flex-direction: column;
     }
 
+    .hero--editor .hero__topbar {
+        display: flex;
+        gap: 20px;
+    }
+
     .hero__description {
         font-size: 0.95rem;
         line-height: 1.7;
@@ -661,6 +798,26 @@ body {
         border-radius: 22px;
     }
 
+    .editor-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 18px;
+        align-items: start;
+    }
+
+    .editor-main {
+        order: 2;
+    }
+
+    .editor-sidebar {
+        order: 1;
+        display: block;
+        height: auto;
+    }
+
+    .workspace--editor {
+        width: min(920px, 100%);
+    }
+
     .entry-form__row {
         flex-direction: column;
         align-items: stretch;
@@ -672,21 +829,10 @@ body {
         width: 100%;
     }
 
-    .editor-card__header {
-        align-items: flex-start;
-        flex-direction: column;
-        margin-bottom: 14px;
-    }
-
     .entry-card__header,
-    .editor-card__actions,
     .auth-panel__actions {
         flex-direction: column;
         align-items: stretch;
-    }
-
-    .editor-card__status {
-        align-self: flex-start;
     }
 
     .permission-editor-form {
@@ -715,5 +861,53 @@ body {
     .tiptap-editor__content {
         min-height: calc(60vh - 36px);
         font-size: 0.98rem;
+    }
+
+    .editor-sidebar__summary {
+        cursor: pointer;
+        padding: 16px 16px 14px;
+    }
+
+    .editor-sidebar__panel {
+        position: static;
+        top: auto;
+        display: block;
+        flex: none;
+        height: auto;
+        min-height: 0;
+    }
+
+    .editor-sidebar__summary-copy {
+        gap: 2px;
+    }
+
+    .editor-sidebar__summary-title {
+        font-size: 0.96rem;
+    }
+
+    .editor-sidebar__content {
+        display: block;
+        flex: none;
+        padding: 0 16px 16px;
+    }
+
+    .editor-sidebar__actions {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .editor-sidebar__actions .ghost-button {
+        width: 100%;
+    }
+
+    .editor-sidebar__meta {
+        gap: 10px;
+    }
+
+    .editor-sidebar__panel:not([open]) .editor-sidebar__content {
+        display: none;
     }
 }

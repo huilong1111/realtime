@@ -21,7 +21,7 @@
 </head>
 <body>
     <div class="page-shell">
-        <header class="hero">
+        <header class="hero hero--editor">
             <div class="hero__topbar">
                 <div>
                     <p class="hero__eyebrow">Realtime Doc</p>
@@ -37,81 +37,89 @@
             </p>
         </header>
 
-        <main class="workspace">
+        <main class="workspace workspace--editor">
             <section class="editor-card" aria-label="文档编辑区域">
-                <div class="editor-card__header">
-                    <div>
-                        <h2 class="editor-card__title" id="docTitle">未命名文档</h2>
-                        <p class="editor-card__subtitle">同一文档号内实时同步</p>
-                    </div>
-                    <div class="editor-card__actions">
-                        <span class="editor-card__status" id="connectionStatus">连接中...</span>
-                        <button class="ghost-button card-action-button" id="leaveDocButton" type="button">退出</button>
-                    </div>
-                </div>
+                <div class="editor-layout">
+                    <div class="editor-main">
+                        <div class="readonly-banner is-hidden" id="readonlyBanner">
+                            当前没有编辑权限，你可以查看内容
+                        </div>
 
-                <div class="doc-meta">
-                    <span class="doc-badge">文档号</span>
-                    <code class="doc-id" id="docIdLabel">-</code>
-                    <button class="ghost-button" id="copyLinkButton" type="button">复制邀请链接</button>
-                </div>
+                        <div class="editor-label">文档内容</div>
 
-                <div class="readonly-banner is-hidden" id="readonlyBanner">
-                    当前没有编辑权限，你可以查看内容
-                </div>
+                        <div class="tiptap-shell">
+                            <div class="tiptap-toolbar" id="editorToolbar" aria-label="富文本工具栏">
+                                <button class="toolbar-button" type="button" data-action="paragraph">段落</button>
+                                <button class="toolbar-button" type="button" data-action="heading-1">标题 1</button>
+                                <button class="toolbar-button" type="button" data-action="heading-2">标题 2</button>
+                                <button class="toolbar-button" type="button" data-action="bold">粗体</button>
+                                <button class="toolbar-button" type="button" data-action="italic">斜体</button>
+                                <button class="toolbar-button" type="button" data-action="bullet-list">无序列表</button>
+                                <button class="toolbar-button" type="button" data-action="ordered-list">有序列表</button>
+                            </div>
 
-                <section class="permission-card" aria-label="文档权限信息">
-                    <div class="permission-card__header">
-                        <div>
-                            <h3 class="permission-card__title">文档权限</h3>
-                            <p class="permission-card__subtitle" id="permissionSummary">正在加载权限信息...</p>
+                            <!-- Yjs 改造点：多人光标的 presence 清理依赖 awareness 工具函数 -->
+                            <div
+                                id="editor"
+                                class="tiptap-editor"
+                                aria-label="富文本编辑器"
+                            ></div>
                         </div>
                     </div>
 
-                    <div class="permission-card__meta" id="permissionMeta"></div>
+                    <aside class="editor-sidebar" aria-label="文档信息侧栏">
+                        <details class="editor-sidebar__panel" id="infoSidebarDetails">
+                            <summary class="editor-sidebar__summary">
+                                <div class="editor-sidebar__summary-copy">
+                                    <span class="editor-sidebar__summary-label">文档信息</span>
+                                    <strong class="editor-sidebar__summary-title" id="sidebarSummaryTitle">文档 -</strong>
+                                </div>
+                                <span class="editor-card__status" id="connectionStatus">连接中...</span>
+                            </summary>
 
-                    <div class="permission-owner-panel is-hidden" id="ownerPermissionPanel">
-                        <label class="permission-toggle">
-                            <input id="publicEditableToggle" type="checkbox">
-                            <span>所有人可编辑</span>
-                        </label>
+                            <div class="editor-sidebar__content">
+                                    <div class="editor-card__header editor-sidebar__header">
+                                        <div class="editor-card__actions editor-sidebar__actions">
+                                            <button class="ghost-button card-action-button" id="copyLinkButton" type="button">复制邀请链接</button>
+                                            <button class="ghost-button ghost-button--danger card-action-button" id="leaveDocButton" type="button">退出</button>
+                                        </div>
+                                    </div>
 
-                        <form class="permission-editor-form" id="addEditorForm">
-                            <input
-                                id="editorUsernameInput"
-                                class="doc-input"
-                                type="text"
-                                placeholder="输入要授权的用户名"
-                                autocomplete="off"
-                            >
-                            <button class="secondary-button permission-submit-button" type="submit">添加可编辑用户</button>
-                        </form>
+                                    <section class="permission-card editor-sidebar__permission" aria-label="文档权限信息">
+                                    <div class="permission-card__header">
+                                        <div>
+                                            <h3 class="permission-card__title">文档权限</h3>
+                                            <p class="permission-card__subtitle" id="permissionSummary">正在加载权限信息...</p>
+                                        </div>
+                                    </div>
 
-                        <p class="form-message permission-message" id="permissionMessage"></p>
+                                    <div class="permission-card__meta" id="permissionMeta"></div>
 
-                        <div class="permission-editor-list" id="editorList"></div>
-                    </div>
-                </section>
+                                    <div class="permission-owner-panel is-hidden" id="ownerPermissionPanel">
+                                        <label class="permission-toggle">
+                                            <input id="publicEditableToggle" type="checkbox">
+                                            <span>所有人可编辑</span>
+                                        </label>
 
-                <div class="editor-label">文档内容</div>
+                                        <form class="permission-editor-form" id="addEditorForm">
+                                            <input
+                                                id="editorUsernameInput"
+                                                class="doc-input"
+                                                type="text"
+                                                placeholder="用户名："
+                                                autocomplete="off"
+                                            >
+                                            <button class="secondary-button permission-submit-button" type="submit">添加可编辑用户</button>
+                                        </form>
 
-                <div class="tiptap-shell">
-                    <div class="tiptap-toolbar" id="editorToolbar" aria-label="富文本工具栏">
-                        <button class="toolbar-button" type="button" data-action="paragraph">段落</button>
-                        <button class="toolbar-button" type="button" data-action="heading-1">标题 1</button>
-                        <button class="toolbar-button" type="button" data-action="heading-2">标题 2</button>
-                        <button class="toolbar-button" type="button" data-action="bold">粗体</button>
-                        <button class="toolbar-button" type="button" data-action="italic">斜体</button>
-                        <button class="toolbar-button" type="button" data-action="bullet-list">无序列表</button>
-                        <button class="toolbar-button" type="button" data-action="ordered-list">有序列表</button>
-                    </div>
+                                        <p class="form-message permission-message" id="permissionMessage"></p>
 
-                    <!-- Yjs 改造点：多人光标的 presence 清理依赖 awareness 工具函数。 -->
-                    <div
-                        id="editor"
-                        class="tiptap-editor"
-                        aria-label="富文本编辑器"
-                    ></div>
+                                        <div class="permission-editor-list" id="editorList"></div>
+                                    </div>
+                                </section>
+                            </div>
+                        </details>
+                    </aside>
                 </div>
             </section>
         </main>

@@ -2,7 +2,6 @@ import { fetchCurrentUser, logout, redirectToLogin, redirectToRegister } from "/
 
 const entryForm = document.getElementById("entryForm");
 const docIdInput = document.getElementById("docIdInput");
-const createDocButton = document.getElementById("createDocButton");
 const roomList = document.getElementById("roomList");
 const roomListState = document.getElementById("roomListState");
 const authStatusText = document.getElementById("authStatusText");
@@ -18,10 +17,6 @@ function normalizeDocId(value) {
 
 function isValidDocId(docId) {
     return DOC_ID_PATTERN.test(docId);
-}
-
-function createDocId() {
-    return `doc-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
 function goToDocument(docId) {
@@ -50,7 +45,7 @@ function formatUpdatedAt(value) {
 function renderRoomList(documents) {
     roomList.innerHTML = "";
 
-    if (documents.length === 0) {
+    if (!Array.isArray(documents) || documents.length === 0) {
         roomListState.textContent = "还没有可进入的房间。";
         roomListState.classList.remove("is-hidden");
         return;
@@ -75,7 +70,10 @@ function renderRoomList(documents) {
 
 async function loadDocuments() {
     try {
-        const response = await fetch("/api/documents");
+        const response = await fetch("/api/documents", {
+            credentials: "same-origin",
+        });
+
         if (!response.ok) {
             throw new Error("Failed to fetch documents");
         }
@@ -89,8 +87,7 @@ async function loadDocuments() {
 }
 
 /**
- * 首页把登录状态单独展示出来，方便用户知道自己当前能否创建文档，
- * 以及文档的默认权限模型。
+ * 首页把登录状态单独展示出来，方便用户知道当前是否以登录身份进入文档。
  */
 function renderAuthPanel() {
     authActions.innerHTML = "";
@@ -110,7 +107,7 @@ function renderAuthPanel() {
         return;
     }
 
-    authStatusText.textContent = "当前以游客身份浏览，可查看文档。";
+    authStatusText.textContent = "当前为游客浏览模式。";
 
     const loginButton = document.createElement("button");
     loginButton.type = "button";
@@ -162,14 +159,5 @@ docIdInput.addEventListener("input", () => {
     docIdInput.setCustomValidity("");
 });
 
-createDocButton.addEventListener("click", () => {
-    const docId = createDocId();
-    if (!currentUser) {
-        redirectToLogin(`/doc/${encodeURIComponent(docId)}`);
-        return;
-    }
-    goToDocument(docId);
-});
-
 await loadCurrentUser();
-loadDocuments();
+await loadDocuments();

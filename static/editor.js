@@ -6,8 +6,6 @@ import {
 
 const leaveDocButton = document.getElementById("leaveDocButton");
 const copyLinkButton = document.getElementById("copyLinkButton");
-const docIdLabel = document.getElementById("docIdLabel");
-const docTitle = document.getElementById("docTitle");
 const connectionStatus = document.getElementById("connectionStatus");
 const editorElement = document.getElementById("editor");
 const toolbar = document.getElementById("editorToolbar");
@@ -22,6 +20,8 @@ const addEditorForm = document.getElementById("addEditorForm");
 const editorUsernameInput = document.getElementById("editorUsernameInput");
 const permissionMessage = document.getElementById("permissionMessage");
 const editorList = document.getElementById("editorList");
+const infoSidebarDetails = document.getElementById("infoSidebarDetails");
+const sidebarSummaryTitle = document.getElementById("sidebarSummaryTitle");
 
 const DOC_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
@@ -30,6 +30,7 @@ let currentUser = null;
 let currentPermission = null;
 let currentConnectionState = "connecting";
 let collaborationSession = null;
+let isMobileSidebarLayout = null;
 
 function isValidDocId(docId) {
     return DOC_ID_PATTERN.test(docId);
@@ -42,6 +43,34 @@ function getDocIdFromPath() {
 
 function goHome() {
     window.location.href = "/";
+}
+
+function syncInfoSidebarTitle(docId) {
+    if (sidebarSummaryTitle) {
+        sidebarSummaryTitle.textContent = `文档 ${docId}`;
+    }
+}
+
+/**
+ * 移动端默认折叠信息区
+ */
+function applyInfoSidebarDefaultState(force = false) {
+    if (!infoSidebarDetails) {
+        return;
+    }
+
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+    if (!force && isMobileSidebarLayout === isMobile) {
+        return;
+    }
+
+    isMobileSidebarLayout = isMobile;
+
+    if (isMobile) {
+        infoSidebarDetails.open = false;
+    } else {
+        infoSidebarDetails.open = true;
+    }
 }
 
 async function fetchDocumentPermission(docId) {
@@ -212,7 +241,7 @@ function renderAuthPanel() {
         return;
     }
 
-    authStatusText.textContent = "当前为游客浏览模式。你可以查看文档；若文档开放全员编辑，也可以直接参与协作。";
+    authStatusText.textContent = "当前为游客浏览模式。你可以查看文档";
 
     const loginButton = document.createElement("button");
     loginButton.type = "button";
@@ -375,8 +404,7 @@ async function connectToDocument(docId) {
     await loadCurrentUser();
 
     activeDocId = docId;
-    docIdLabel.textContent = docId;
-    docTitle.textContent = `文档 ${docId}`;
+    syncInfoSidebarTitle(docId);
     document.title = `实时文档 - ${docId}`;
     updateStatus("connecting");
 
@@ -445,6 +473,8 @@ window.addEventListener("beforeunload", () => {
 });
 
 bindToolbarEvents();
+applyInfoSidebarDefaultState(true);
+window.addEventListener("resize", applyInfoSidebarDefaultState);
 
 const initialDocId = getDocIdFromPath();
 
