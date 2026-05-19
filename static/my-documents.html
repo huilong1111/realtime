@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的文档</title>
+    <link rel="stylesheet" href="/static/style.css?v=20260519-4">
+</head>
+<body>
+    <div class="page-shell">
+        <header class="hero">
+            <div class="hero__topbar">
+                <div class="hero__intro">
+                    <p class="hero__eyebrow">Realtime Doc</p>
+                    <h1 class="hero__title">我的文档</h1>
+                    <p class="hero__description">
+                        这里查看你创建过的文档，点击任意一项即可直接进入协作页面
+                    </p>
+                </div>
+                <div class="auth-panel" id="authPanel">
+                    <p class="auth-panel__text" id="authStatusText">正在检查登录状态...</p>
+                    <div class="auth-panel__actions" id="authActions"></div>
+                </div>
+            </div>
+        </header>
+
+        <main class="workspace">
+            <section class="document-stream-section">
+                <div class="document-stream-section__header">
+                    <div>
+                        <h2 class="section-title">我的文档列表</h2>
+                        <p class="section-subtitle">仅展示由当前账号创建的文档</p>
+                    </div>
+                </div>
+                <div class="room-list" id="myDocumentsList"></div>
+                <p class="room-list__state" id="myDocumentsState">正在加载你的文档列表...</p>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="/static/my-documents.js?v=20260519-4"></script>
+</body>
+</html>

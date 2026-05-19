@@ -58,7 +58,7 @@
                                 <button class="toolbar-button" type="button" data-action="ordered-list">有序列表</button>
                             </div>
 
-                            <!-- Yjs 改造点：多人光标的 presence 清理依赖 awareness 工具函数 -->
+                            <!-- 多人光标awareness 工具函数 -->
                             <div
                                 id="editor"
                                 class="tiptap-editor"
@@ -115,6 +115,16 @@
                                         <p class="form-message permission-message" id="permissionMessage"></p>
 
                                         <div class="permission-editor-list" id="editorList"></div>
+
+                                        <div class="permission-danger-zone">
+                                            <button
+                                                class="ghost-button ghost-button--danger permission-delete-button"
+                                                id="deleteDocumentButton"
+                                                type="button"
+                                            >
+                                                删除文档
+                                            </button>
+                                        </div>
                                     </div>
                                 </section>
                             </div>

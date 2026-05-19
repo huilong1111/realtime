@@ -4,24 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>实时文档</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/style.css?v=20260519-4">
 </head>
 <body>
     <div class="page-shell">
         <header class="hero">
             <div class="hero__topbar">
-                <div>
+                <div class="hero__intro">
                     <p class="hero__eyebrow">Realtime Doc</p>
                     <h1 class="hero__title">实时协作文档</h1>
+                    <p class="hero__description">
+                        输入文档号加入已有协作房间，也可以直接把文档链接分享给同伴
+                    </p>
                 </div>
                 <div class="auth-panel" id="authPanel">
                     <p class="auth-panel__text" id="authStatusText">正在检查登录状态...</p>
                     <div class="auth-panel__actions" id="authActions"></div>
                 </div>
             </div>
-            <p class="hero__description">
-                输入文档号加入已有协作房间，也可以直接把文档链接分享给同伴。
-            </p>
         </header>
 
         <main class="workspace">
@@ -50,8 +50,8 @@
                 </form>
             </section>
 
-            <section class="room-list-card">
-                <div class="room-list-card__header">
+            <section class="document-stream-section">
+                <div class="document-stream-section__header">
                     <div>
                         <h2 class="section-title">已有文档</h2>
                         <p class="section-subtitle">点击任意房间即可直接进入</p>
@@ -63,6 +63,6 @@
         </main>
     </div>
 
-    <script type="module" src="/static/home.js?v=20260518-1"></script>
+    <script type="module" src="/static/home.js?v=20260519-4"></script>
 </body>
 </html>

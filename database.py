@@ -10,6 +10,8 @@ from sqlalchemy import (
     UniqueConstraint,
     create_engine,
     func,
+    inspect,
+    text,
 )
 from sqlalchemy.orm import sessionmaker
 
@@ -26,6 +28,8 @@ documents_table = Table(
     Column("doc_id", String, unique=True, nullable=False, index=True),
     Column("owner_user_id", Integer, nullable=True, index=True),
     Column("is_public_editable", Boolean, nullable=False, server_default="false"),
+    Column("title", String, nullable=False, server_default=""),
+    Column("preview_text", String, nullable=False, server_default=""),
     Column("yjs_state", LargeBinary, nullable=True),
     Column("created_at", TIMESTAMP, server_default=func.now(), nullable=False),
     Column("updated_at", TIMESTAMP, server_default=func.now(), nullable=False),
@@ -54,3 +58,4 @@ users_table = Table(
 
 def init_db() -> None:
     metadata.create_all(engine)
+   

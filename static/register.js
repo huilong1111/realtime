@@ -10,7 +10,7 @@ const returnPath = getSafeReturnPath("/");
 loginLink.href = `/login?return=${encodeURIComponent(returnPath)}`;
 
 /**
- * 注册成功后直接复用后端下发的登录 Cookie，用户无需再额外手动登录一次。
+ * 注册成功后直接复用后端下发的登录 Cookie
  */
 registerForm.addEventListener("submit", async (event) => {
     event.preventDefault();

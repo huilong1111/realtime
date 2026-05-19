@@ -23,9 +23,11 @@ from document_service import (
     add_document_editor,
     can_user_edit_document,
     create_document_if_missing,
+    delete_document,
     get_document_permission,
     get_document_record,
     list_documents,
+    list_documents_by_owner,
     remove_document_editor,
     set_document_public_editable,
 )
@@ -95,9 +97,22 @@ async def serve_register() -> FileResponse:
     return FileResponse(STATIC_DIR / "register.html")
 
 
+@app.get("/my-documents")
+async def serve_my_documents() -> FileResponse:
+    return FileResponse(STATIC_DIR / "my-documents.html")
+
+
 @app.get("/api/documents")
 async def get_documents() -> JSONResponse:
     return JSONResponse(list_documents())
+
+
+@app.get("/api/my-documents")
+async def get_my_documents(request: Request) -> JSONResponse:
+    user = get_current_user_from_request(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="未登录")
+    return JSONResponse(list_documents_by_owner(user["id"]))
 
 
 @app.post("/api/auth/register")
@@ -217,6 +232,24 @@ async def delete_editor_permission(doc_id: str, username: str, request: Request)
         raise HTTPException(status_code=404, detail="目标用户不存在")
 
     return JSONResponse(permission)
+
+
+@app.delete("/api/documents/{doc_id}")
+async def delete_document_route(doc_id: str, request: Request) -> JSONResponse:
+    if not is_valid_doc_id(doc_id):
+        raise HTTPException(status_code=400, detail="闈炴硶鏂囨。鍙?")
+
+    user = get_current_user_from_request(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="鏈櫥褰?")
+
+    try:
+        delete_document(doc_id, user["id"])
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="鍙湁鍒涘缓鑰呭彲浠ュ垹闄ゆ枃妗?")
+
+    await yjs_server.delete_room(doc_id)
+    return JSONResponse({"ok": True})
 
 
 @app.get("/doc/{doc_id}")

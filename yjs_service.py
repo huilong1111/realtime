@@ -1,5 +1,6 @@
 import asyncio
 from inspect import isawaitable
+import re
 
 from anyio import create_task_group
 from fastapi import WebSocket, WebSocketDisconnect
@@ -10,13 +11,13 @@ from ypy_websocket.yutils import (
     YMessageType,
     YSyncMessageType,
     process_sync_message,
-    put_updates,
-    read_message,
     sync,
     write_var_uint,
 )
 
 from document_service import ensure_document_exists, save_yjs_state
+
+PREVIEW_EMPTY_TEXT = "暂无内容"
 
 
 def write_var_string(value: str) -> bytes:
@@ -31,6 +32,49 @@ def create_awareness_message(entries: list[tuple[int, int, str]]) -> bytes:
         payload += write_var_uint(clock)
         payload += write_var_string(state_str)
     return bytes([YMessageType.AWARENESS]) + write_var_uint(len(payload)) + payload
+
+
+def normalize_preview_text(value: str) -> str:
+    return re.sub(r"\s+", " ", value).strip()
+
+
+def extract_tiptap_preview(ydoc: Y.YDoc, doc_id: str) -> tuple[str, str]:
+    root = ydoc.get_xml_element("prosemirror")
+    heading_title = ""
+    text_blocks: list[str] = []
+
+    for node in root.tree_walker():
+        if not isinstance(node, Y.YXmlElement):
+            continue
+
+        node_text = normalize_preview_text(str(node))
+        if not node_text:
+            continue
+
+        if node.name == "heading" and not heading_title:
+            heading_title = node_text
+
+        if node.name in {"heading", "paragraph", "blockquote", "listItem"}:
+            text_blocks.append(node_text)
+
+    fallback_title = text_blocks[0] if text_blocks else ""
+    title = heading_title or fallback_title or doc_id
+
+    preview_blocks = []
+    skipped_title = False
+    for block in text_blocks:
+        if not skipped_title and block == title:
+            skipped_title = True
+            continue
+        preview_blocks.append(block)
+
+    preview_text = normalize_preview_text(" ".join(preview_blocks))
+    if preview_text == title:
+        preview_text = ""
+    if len(preview_text) > 120:
+        preview_text = preview_text[:120].rstrip() + "..."
+
+    return title, (preview_text or PREVIEW_EMPTY_TEXT)
 
 
 # 这里集中承接 FastAPI WebSocket 适配层和 Yjs 房间服务层。
@@ -57,13 +101,16 @@ class FastAPIYjsWebSocket:
         try:
             await self.websocket.send_bytes(message)
         except RuntimeError as exc:
-            # 连接已经被浏览器侧关闭时，主动结束当前 websocket 适配实例。
             raise WebSocketDisconnect() from exc
 
+    async def close(self, code: int = 1000) -> None:
+        try:
+            await self.websocket.close(code=code)
+        except RuntimeError:
+            pass
+
     def _is_allowed_readonly_message(self, message: bytes) -> bool:
-        # 协同权限边界：只读用户仍可完成初始化同步和保持在线，
-        # 但不能把真正的文档更新写回房间。
-        # 允许 AWARENESS 消息通过。
+        # 协同权限边界：只读用户仍可完成初始化同步、awareness 广播和在线感知，但不能提交文档更新。
         if not message:
             return False
         if message[0] == YMessageType.AWARENESS:
@@ -122,7 +169,7 @@ class PresenceAwareRoom(YRoom):
             return
 
         removal_message = create_awareness_message(removal_entries)
-        # 先更新房间内的 awareness 视图，再把“该 clientId 已离线”的消息立刻广播给其他客户端。
+        # 先更新房间内的 awareness 视图，再把“该 clientId 已离线”的消息立即广播给其他客户端。
         self.awareness.get_changes(removal_message[1:])
         for client in self.clients:
             if client != websocket:
@@ -186,7 +233,7 @@ class PersistentYjsServer(WebsocketServer):
     async def _bootstrap_room(self, doc_id: str, room: YRoom, create_if_missing: bool) -> None:
         yjs_state = ensure_document_exists(doc_id, create_if_missing=create_if_missing)
         if yjs_state:
-            # 先恢复数据库中的 Yjs 快照，保证同一文档重进时优先回到上次协同状态。
+            # 先恢复数据库里的 Yjs 快照，保证同一文档重进时优先回到上次协同状态。
             Y.apply_update(room.ydoc, bytes(yjs_state))
 
         room.ready = True
@@ -216,11 +263,18 @@ class PersistentYjsServer(WebsocketServer):
     async def _persist_room_state_later(self, doc_id: str, ydoc: Y.YDoc) -> None:
         try:
             await asyncio.sleep(1)
-            # 富文本真实状态直接保存为 yjs_state。
+            # 富文本真实状态仍以 yjs_state 为准，同时派生标题与摘要给首页和“我的文档”卡片直接展示。
             for _ in range(3):
                 try:
                     yjs_state = Y.encode_state_as_update(ydoc)
-                    await asyncio.to_thread(save_yjs_state, doc_id, yjs_state)
+                    title, preview_text = extract_tiptap_preview(ydoc, doc_id)
+                    await asyncio.to_thread(
+                        save_yjs_state,
+                        doc_id,
+                        yjs_state,
+                        title,
+                        preview_text,
+                    )
                     return
                 except RuntimeError:
                     await asyncio.sleep(0.05)
@@ -235,6 +289,24 @@ class PersistentYjsServer(WebsocketServer):
         if self._save_tasks:
             await asyncio.gather(*self._save_tasks.values(), return_exceptions=True)
         self._save_tasks.clear()
+
+    async def delete_room(self, doc_id: str) -> None:
+        # 删除文档时同时清掉在线协同房间，避免旧连接继续停留在已删除文档里。
+        task = self._save_tasks.pop(doc_id, None)
+        if task and not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+        room = self.rooms.pop(doc_id, None)
+        if not room:
+            return
+
+        clients = list(room.clients)
+        room.clients = []
+        for client in clients:
+            close = getattr(client, "close", None)
+            if close:
+                await close(code=1008)
 
 
 yjs_server = PersistentYjsServer()

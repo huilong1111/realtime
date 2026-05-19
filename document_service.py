@@ -13,6 +13,8 @@ def get_document_record(doc_id: str) -> dict | None:
                 documents_table.c.doc_id,
                 documents_table.c.owner_user_id,
                 documents_table.c.is_public_editable,
+                documents_table.c.title,
+                documents_table.c.preview_text,
                 documents_table.c.yjs_state,
                 owner_alias.c.username.label("owner_username"),
             )
@@ -34,6 +36,8 @@ def get_document_record(doc_id: str) -> dict | None:
         "owner_user_id": row.owner_user_id,
         "owner_username": row.owner_username,
         "is_public_editable": bool(row.is_public_editable),
+        "title": row.title or row.doc_id,
+        "preview_text": row.preview_text or "暂无内容",
         "yjs_state": row.yjs_state,
     }
 
@@ -58,7 +62,11 @@ def create_document_if_missing(doc_id: str, owner_user_id: int) -> dict:
     return record
 
 
-def ensure_document_exists(doc_id: str, create_if_missing: bool, owner_user_id: int | None = None) -> bytes | None:
+def ensure_document_exists(
+    doc_id: str,
+    create_if_missing: bool,
+    owner_user_id: int | None = None,
+) -> bytes | None:
     record = get_document_record(doc_id)
     if record:
         return record["yjs_state"]
@@ -70,15 +78,23 @@ def ensure_document_exists(doc_id: str, create_if_missing: bool, owner_user_id: 
     return record["yjs_state"]
 
 
-def save_yjs_state(doc_id: str, yjs_state: bytes) -> None:
+def save_yjs_state(doc_id: str, yjs_state: bytes, title: str, preview_text: str) -> None:
     with SessionLocal() as session:
         statement = (
             insert(documents_table)
-            .values(doc_id=doc_id, yjs_state=yjs_state, is_public_editable=False)
+            .values(
+                doc_id=doc_id,
+                yjs_state=yjs_state,
+                title=title,
+                preview_text=preview_text,
+                is_public_editable=False,
+            )
             .on_conflict_do_update(
                 index_elements=[documents_table.c.doc_id],
                 set_={
                     "yjs_state": yjs_state,
+                    "title": title,
+                    "preview_text": preview_text,
                     "updated_at": func.now(),
                 },
             )
@@ -87,20 +103,48 @@ def save_yjs_state(doc_id: str, yjs_state: bytes) -> None:
         session.commit()
 
 
-def list_documents() -> list[dict[str, str]]:
-    with SessionLocal() as session:
-        rows = session.execute(
-            select(documents_table.c.doc_id, documents_table.c.updated_at)
-            .order_by(documents_table.c.updated_at.desc())
-        ).all()
-
+def _serialize_document_rows(rows) -> list[dict[str, str]]:
     return [
         {
             "doc_id": row.doc_id,
+            "title": row.title or row.doc_id,
+            "preview_text": row.preview_text or "暂无内容",
             "updated_at": row.updated_at.isoformat() if row.updated_at else "",
         }
         for row in rows
     ]
+
+
+def list_documents() -> list[dict[str, str]]:
+    with SessionLocal() as session:
+        rows = session.execute(
+            select(
+                documents_table.c.doc_id,
+                documents_table.c.title,
+                documents_table.c.preview_text,
+                documents_table.c.updated_at,
+            )
+            .order_by(documents_table.c.updated_at.desc())
+        ).all()
+
+    return _serialize_document_rows(rows)
+
+
+def list_documents_by_owner(user_id: int) -> list[dict[str, str]]:
+    # “我的文档”只返回当前用户创建的文档，不混入协作者或公开可编辑文档。
+    with SessionLocal() as session:
+        rows = session.execute(
+            select(
+                documents_table.c.doc_id,
+                documents_table.c.title,
+                documents_table.c.preview_text,
+                documents_table.c.updated_at,
+            )
+            .where(documents_table.c.owner_user_id == user_id)
+            .order_by(documents_table.c.updated_at.desc())
+        ).all()
+
+    return _serialize_document_rows(rows)
 
 
 def get_document_editor_usernames(doc_id: str) -> list[str]:
@@ -121,7 +165,7 @@ def get_document_editor_usernames(doc_id: str) -> list[str]:
 
 
 def get_document_permission(doc_id: str, current_user_id: int | None) -> dict:
-    # 编辑权限分三层：创建者、全员可编辑、指定用户名可编辑。
+    # 编辑权限分三层：创建者、全员可编辑、指定用户可编辑。
     record = get_document_record(doc_id)
     if not record:
         return {
@@ -166,7 +210,11 @@ def can_user_edit_document(doc_id: str, current_user_id: int | None) -> bool:
     return bool(permission["can_edit"])
 
 
-def set_document_public_editable(doc_id: str, owner_user_id: int, is_public_editable: bool) -> dict:
+def set_document_public_editable(
+    doc_id: str,
+    owner_user_id: int,
+    is_public_editable: bool,
+) -> dict:
     permission = get_document_permission(doc_id, owner_user_id)
     if not permission["is_owner"]:
         raise PermissionError("only_owner_can_update_permissions")
@@ -240,3 +288,17 @@ def remove_document_editor(doc_id: str, owner_user_id: int, username: str) -> di
         session.commit()
 
     return get_document_permission(doc_id, owner_user_id)
+
+
+def delete_document(doc_id: str, owner_user_id: int) -> None:
+    # 删除文档同样只允许创建者执行，并且要把授权关系和文档记录一起清掉，避免残留无效权限数据。
+    permission = get_document_permission(doc_id, owner_user_id)
+    if not permission["is_owner"]:
+        raise PermissionError("only_owner_can_delete_document")
+
+    with SessionLocal() as session:
+        session.execute(
+            delete(document_editors_table).where(document_editors_table.c.doc_id == doc_id)
+        )
+        session.execute(delete(documents_table).where(documents_table.c.doc_id == doc_id))
+        session.commit()
