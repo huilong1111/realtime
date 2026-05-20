@@ -237,16 +237,16 @@ async def delete_editor_permission(doc_id: str, username: str, request: Request)
 @app.delete("/api/documents/{doc_id}")
 async def delete_document_route(doc_id: str, request: Request) -> JSONResponse:
     if not is_valid_doc_id(doc_id):
-        raise HTTPException(status_code=400, detail="闈炴硶鏂囨。鍙?")
+        raise HTTPException(status_code=400, detail="非法文档号")
 
     user = get_current_user_from_request(request)
     if not user:
-        raise HTTPException(status_code=401, detail="鏈櫥褰?")
+        raise HTTPException(status_code=401, detail="未登录")
 
     try:
         delete_document(doc_id, user["id"])
     except PermissionError:
-        raise HTTPException(status_code=403, detail="鍙湁鍒涘缓鑰呭彲浠ュ垹闄ゆ枃妗?")
+        raise HTTPException(status_code=403, detail="只有创建者可以删除文档")
 
     await yjs_server.delete_room(doc_id)
     return JSONResponse({"ok": True})
