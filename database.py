@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy import (
     TIMESTAMP,
     Boolean,
@@ -15,9 +17,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql+psycopg2://postgres:123456@localhost:5432/realtime_doc"
+# 数据库连接优先从环境变量读取，便于本地直跑和 Docker/云服务器部署共用同一套代码。
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+psycopg2://postgres:123456@localhost:5432/realtime_doc",
+)
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine)
 metadata = MetaData()
 

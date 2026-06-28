@@ -14,7 +14,9 @@ from user_service import get_user_by_id
 ACCESS_TOKEN_COOKIE_NAME = "access_token"
 ACCESS_TOKEN_EXPIRE_SECONDS = 60 * 60 * 24 * 7
 JWT_ALGORITHM = "HS256"
+# JWT 密钥和 Cookie 安全策略改为环境变量驱动，便于本地开发与容器部署切换。
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "realtime-doc-demo-secret")
+COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_]{3,32}$")
 PASSWORD_MIN_LENGTH = 6
 PASSWORD_ITERATIONS = 200_000
@@ -145,6 +147,6 @@ def build_auth_cookie_settings() -> dict:
         "httponly": True,
         "max_age": ACCESS_TOKEN_EXPIRE_SECONDS,
         "samesite": "lax",
-        "secure": False,
+        "secure": COOKIE_SECURE,
         "path": "/",
     }
