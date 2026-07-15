@@ -141,6 +141,14 @@ class PresenceAwareRoom(YRoom):
         super().__init__(*args, **kwargs)
         self._client_ids_by_socket: dict[object, set[int]] = {}
 
+    async def _safe_send(self, client, message: bytes) -> None:
+        try:
+            await client.send(message)
+        except Exception:
+            # 鍗忓悓骞挎挱鏃跺鏋滄煇涓棫杩炴帴宸茬粡澶辨晥锛屼笉瑕佽瀹冩嫋鍨暣涓埧闂寸殑鍚庣画杩炴帴銆?
+            self._client_ids_by_socket.pop(client, None)
+            self.clients = [item for item in self.clients if item != client]
+
     def _track_awareness_from_message(self, websocket, message: bytes) -> None:
         if len(message) < 2 or message[0] != YMessageType.AWARENESS:
             return
@@ -171,9 +179,9 @@ class PresenceAwareRoom(YRoom):
         removal_message = create_awareness_message(removal_entries)
         # 先更新房间内的 awareness 视图，再把“该 clientId 已离线”的消息立即广播给其他客户端。
         self.awareness.get_changes(removal_message[1:])
-        for client in self.clients:
+        for client in list(self.clients):
             if client != websocket:
-                await client.send(removal_message)
+                await self._safe_send(client, removal_message)
 
     async def serve(self, websocket):
         async with create_task_group() as tg:
@@ -200,18 +208,22 @@ class PresenceAwareRoom(YRoom):
                             YMessageType.AWARENESS.name,
                             websocket.path,
                         )
-                        for client in self.clients:
+                        for client in list(self.clients):
                             self.log.debug(
                                 "Sending Y awareness from client with endpoint %s to client with endpoint: %s",
                                 websocket.path,
                                 client.path,
                             )
-                            tg.start_soon(client.send, message)
+                            tg.start_soon(self._safe_send, client, message)
             except Exception as e:
                 self.log.debug("Error serving endpoint: %s", websocket.path, exc_info=e)
             finally:
-                await self._broadcast_awareness_removal(websocket)
-                self.clients = [c for c in self.clients if c != websocket]
+                # 鏃犺绉婚櫎 awareness 鏃舵槸鍚﹀張鍑虹幇寮傚父锛岄兘瑕佺‘淇濆綋鍓嶈繛鎺ヤ細琚粠鎴块棿鍒楄〃涓竻鎺夈€?
+                try:
+                    await self._broadcast_awareness_removal(websocket)
+                finally:
+                    self._client_ids_by_socket.pop(websocket, None)
+                    self.clients = [c for c in self.clients if c != websocket]
 
 
 class PersistentYjsServer(WebsocketServer):
@@ -220,6 +232,11 @@ class PersistentYjsServer(WebsocketServer):
         self._save_tasks: dict[str, asyncio.Task] = {}
 
     async def get_room(self, name: str) -> YRoom:
+        existing_room = self.rooms.get(name)
+        if existing_room is not None and getattr(existing_room, "_task_group", None) is None:
+            # 鎴块棿瀵硅薄濡傛灉宸茬粡鍋滄浣嗚繕鐣欏湪鍐呭瓨閲岋紝涓嬩竴娆￠噸杩炴椂鐩存帴閲嶅缓锛岄伩鍏嶉櫡鍏ュ惊鐜噸杩炪€?
+            self.rooms.pop(name, None)
+
         if name not in self.rooms:
             room = PresenceAwareRoom(ready=False, log=self.log)
             self.rooms[name] = room
@@ -250,6 +267,55 @@ class PersistentYjsServer(WebsocketServer):
             return
 
         room.ready = True
+
+    async def serve(self, websocket) -> None:
+        if self._task_group is None:
+            raise RuntimeError(
+                "The WebsocketServer is not running: use `async with websocket_server:` or `await websocket_server.start()`"
+            )
+
+        room = await self.get_room(websocket.path)
+        await self.start_room(room)
+        await room.serve(websocket)
+        await self._cleanup_room_if_idle(websocket.path, room)
+
+    async def _flush_room_state_now(self, doc_id: str, ydoc: Y.YDoc) -> None:
+        # 鏈€鍚庝竴涓鎴风绂诲紑鍚庣珛鍗冲埛鐩樹竴娆★紝杩欐牱涓嬫鍐嶈繘鏃跺彲浠ョ洿鎺ヤ粠鎸佷箙鍖栨仮澶嶈€屼笉鏄緷璧栧唴瀛樻棫鎴块棿銆?
+        for _ in range(3):
+            try:
+                yjs_state = Y.encode_state_as_update(ydoc)
+                title, preview_text = extract_tiptap_preview(ydoc, doc_id)
+                await asyncio.to_thread(
+                    save_yjs_state,
+                    doc_id,
+                    yjs_state,
+                    title,
+                    preview_text,
+                )
+                return
+            except RuntimeError:
+                await asyncio.sleep(0.05)
+
+    async def _cleanup_room_if_idle(self, doc_id: str, room: YRoom) -> None:
+        if room.clients:
+            return
+
+        task = self._save_tasks.pop(doc_id, None)
+        if task and not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+        try:
+            await self._flush_room_state_now(doc_id, room.ydoc)
+        except Exception as exc:
+            self.log.debug("Error flushing idle room state: %s", doc_id, exc_info=exc)
+
+        current_room = self.rooms.get(doc_id)
+        if current_room is room:
+            self.rooms.pop(doc_id, None)
+
+        if getattr(room, "_task_group", None) is not None:
+            room.stop()
 
     def _schedule_persist(self, doc_id: str, ydoc: Y.YDoc) -> None:
         task = self._save_tasks.get(doc_id)
@@ -307,6 +373,9 @@ class PersistentYjsServer(WebsocketServer):
             close = getattr(client, "close", None)
             if close:
                 await close(code=1008)
+
+        if getattr(room, "_task_group", None) is not None:
+            room.stop()
 
 
 yjs_server = PersistentYjsServer()
